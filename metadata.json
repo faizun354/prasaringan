@@ -1,0 +1,6 @@
+{
+  "name": "PondokPresensi - Sistem Presensi Santri QR Code",
+  "description": "Sistem Presensi Santri Modern Berbasis QR Code Permanen untuk Pesantren Modern Nusantara dengan Dashboard, Scanner Real-time, dan Manajemen Kartu.",
+  "requestFramePermissions": ["camera"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
