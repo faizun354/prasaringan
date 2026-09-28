@@ -12,6 +12,7 @@ interface DashboardViewProps {
 export const DashboardView: React.FC<DashboardViewProps> = ({
   santriList,
   activities,
+  attendanceLogs = [],
   onNavigate,
   onOpenScannerForActivity
 }) => {
@@ -23,6 +24,9 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
   const totalKegiatan = activities.length;
   const kegiatanBerlangsung = activities.filter((a) => a.status === 'Sedang Berlangsung').length;
+  const today = new Date().toLocaleDateString('id-ID', {
+    day: '2-digit', month: 'short', year: 'numeric', timeZone: 'Asia/Jakarta'
+  });
 
   // Kegiatan berlangsung / akan datang / selesai (prioritas tampil di dashboard)
   const featuredActivities = [
@@ -185,7 +189,12 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               <div className="grid grid-cols-1 md:grid-cols-2 gap-space-sm">
                 {featuredActivities.map((act) => {
                   const isOngoing = act.status === 'Sedang Berlangsung';
-                  const pct = act.totalSantri > 0 ? Math.round((act.hadirCount / act.totalSantri) * 100) : 0;
+                  const hadirHariIni = attendanceLogs.filter((log) =>
+                    log.date === today && log.status === 'Hadir' &&
+                    (log.kegiatan === act.title || log.kegiatan === act.code)
+                  ).length;
+                  const totalPeserta = act.totalSantri || totalSantri;
+                  const pct = totalPeserta > 0 ? Math.round((hadirHariIni / totalPeserta) * 100) : 0;
                   return (
                     <div
                       key={act.id}
@@ -226,7 +235,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                         <div className="flex items-center justify-between text-xs">
                           <span className="text-on-surface-variant font-medium">Kehadiran:</span>
                           <span className="font-bold text-on-surface">
-                            {act.hadirCount} <span className="text-on-surface-variant font-normal">/ {act.totalSantri} ({pct}%)</span>
+                            {hadirHariIni} <span className="text-on-surface-variant font-normal">/ {totalPeserta} ({pct}%) hari ini</span>
                           </span>
                         </div>
                         <div className="w-full bg-surface-container-highest rounded-full h-2 overflow-hidden">

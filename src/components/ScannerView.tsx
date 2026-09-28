@@ -60,6 +60,11 @@ export const ScannerView: React.FC<ScannerViewProps> = ({
   const activeActivity =
     activities.find((a) => a.code === currentActivityCode) || (activities.length > 0 ? activities[0] : null);
 
+  // Tanggal kalender Indonesia: presensi kegiatan dapat diulang setelah pergantian hari.
+  const today = new Date().toLocaleDateString('id-ID', {
+    day: '2-digit', month: 'short', year: 'numeric', timeZone: 'Asia/Jakarta'
+  });
+
   // Stop / start camera stream
   useEffect(() => {
     if (cameraSource === 'webcam-real') {
@@ -109,7 +114,7 @@ export const ScannerView: React.FC<ScannerViewProps> = ({
 
   // Logs for current activity
   const currentActivityLogs = attendanceLogs.filter(
-    (log) => activeActivity && (log.kegiatan === activeActivity.title || log.kegiatan === activeActivity.code)
+    (log) => activeActivity && (log.kegiatan === activeActivity.title || log.kegiatan === activeActivity.code) && log.date === today
   );
 
   // Trigger scan when santri is identified
@@ -141,7 +146,8 @@ export const ScannerView: React.FC<ScannerViewProps> = ({
       const dateStr = now.toLocaleDateString('id-ID', {
         day: '2-digit',
         month: 'short',
-        year: 'numeric'
+        year: 'numeric',
+        timeZone: 'Asia/Jakarta'
       });
 
       const newRecord: AttendanceRecord = {
@@ -304,7 +310,8 @@ export const ScannerView: React.FC<ScannerViewProps> = ({
         const dateStr = now.toLocaleDateString('id-ID', {
           day: '2-digit',
           month: 'short',
-          year: 'numeric'
+          year: 'numeric',
+          timeZone: 'Asia/Jakarta'
         });
 
         const newRecord: AttendanceRecord = {
