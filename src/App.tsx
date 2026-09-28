@@ -17,6 +17,7 @@ import { KartuSantriView } from './components/KartuSantriView';
 import { KegiatanView } from './components/KegiatanView';
 import { PetugasView } from './components/PetugasView';
 import { PengaturanView } from './components/PengaturanView';
+import { getActivityStatus } from './utils/activitySchedule';
 
 // ─── Base URL API (auto-detect: proxy saat dev, sama-origin saat production) ─
 const API_BASE = '/api';
@@ -57,6 +58,12 @@ export default function App() {
   const [attendanceLogs, setAttendanceLogs] = useState<AttendanceRecord[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [dbConnected, setDbConnected] = useState(false);
+  const [scheduleClock, setScheduleClock] = useState(() => Date.now());
+
+  useEffect(() => {
+    const timer = window.setInterval(() => setScheduleClock(Date.now()), 15_000);
+    return () => window.clearInterval(timer);
+  }, []);
 
   // ─── Helper fetch JSON ────────────────────────────────────────────────
   const apiFetch = async (path: string, options?: RequestInit) => {
@@ -273,6 +280,10 @@ export default function App() {
   }
 
   const loggedInSantri = santriList.find((s) => s.nis.toUpperCase() === loggedInNis.toUpperCase());
+  const scheduledActivities = activities.map((activity) => ({
+    ...activity,
+    status: getActivityStatus(activity.time, new Date(scheduleClock)),
+  }));
 
   return (
     <div className="min-h-screen bg-background font-body-md text-on-surface antialiased flex flex-col">
@@ -314,7 +325,7 @@ export default function App() {
           {role === 'admin' && currentPage === 'dashboard' && (
             <DashboardView
               santriList={santriList}
-              activities={activities}
+              activities={scheduledActivities}
               attendanceLogs={attendanceLogs}
               onNavigate={handleNavigate}
               onOpenScannerForActivity={(code) => {
@@ -335,7 +346,7 @@ export default function App() {
 
           {role === 'admin' && currentPage === 'kegiatan' && (
             <KegiatanView
-              activities={activities}
+              activities={scheduledActivities}
               santriList={santriList}
               onNavigate={handleNavigate}
               onAddActivity={handleAddActivity}
@@ -351,7 +362,7 @@ export default function App() {
           {role === 'admin' && currentPage === 'laporan' && (
             <LaporanView
               santriList={santriList}
-              activities={activities}
+              activities={scheduledActivities}
               attendanceLogs={attendanceLogs}
               onAddAttendance={handleAddAttendance}
             />
@@ -407,7 +418,7 @@ export default function App() {
           {role === 'santri' && currentPage === 'dashboard' && (
             <DashboardView
               santriList={santriList}
-              activities={activities}
+              activities={scheduledActivities}
               attendanceLogs={attendanceLogs}
               onNavigate={handleNavigate}
               onOpenScannerForActivity={(code) => {
@@ -419,7 +430,7 @@ export default function App() {
 
           {role === 'santri' && currentPage === 'kegiatan' && (
             <KegiatanView
-              activities={activities}
+              activities={scheduledActivities}
               santriList={santriList}
               onNavigate={handleNavigate}
               onAddActivity={() => {}}
@@ -445,7 +456,7 @@ export default function App() {
           {role === 'santri' && currentPage === 'laporan' && (
             <LaporanView
               santriList={santriList}
-              activities={activities}
+              activities={scheduledActivities}
               attendanceLogs={attendanceLogs}
               readOnly={true}
             />
@@ -455,7 +466,7 @@ export default function App() {
           {currentPage === 'presensi-scanner' && (
             <ScannerView
               santriList={santriList}
-              activities={activities}
+              activities={scheduledActivities}
               attendanceLogs={attendanceLogs}
               onAddAttendance={handleAddAttendance}
               activeActivityCode={activeActivityCode}

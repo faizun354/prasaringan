@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import jsQR from 'jsqr';
 import { Santri, Activity, AttendanceRecord, Role, PageView } from '../types';
 import { playScannerBeep } from '../utils/audio';
+import { isActivityOpen } from '../utils/activitySchedule';
 
 interface ScannerViewProps {
   santriList: Santri[];
@@ -59,6 +60,7 @@ export const ScannerView: React.FC<ScannerViewProps> = ({
 
   const activeActivity =
     activities.find((a) => a.code === currentActivityCode) || (activities.length > 0 ? activities[0] : null);
+  const scanWindowOpen = !!activeActivity && isActivityOpen(activeActivity.time);
 
   // Tanggal kalender Indonesia: presensi kegiatan dapat diulang setelah pergantian hari.
   const today = new Date().toLocaleDateString('id-ID', {
@@ -121,6 +123,12 @@ export const ScannerView: React.FC<ScannerViewProps> = ({
   const triggerScan = (santri: Santri) => {
     if (!activeActivity) {
       alert('Pilih kegiatan terlebih dahulu sebelum melakukan presensi!');
+      return;
+    }
+
+    if (!isActivityOpen(activeActivity.time)) {
+      setValidatorState('duplicate');
+      if (beepEnabled) playScannerBeep(false);
       return;
     }
 
@@ -294,6 +302,10 @@ export const ScannerView: React.FC<ScannerViewProps> = ({
 
   const handleManualSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (!activeActivity || !isActivityOpen(activeActivity.time)) {
+      alert('Scanner hanya dapat digunakan selama jam kegiatan berlangsung.');
+      return;
+    }
     const cleanNis = manualNis.trim().toUpperCase();
     const found = santriList.find(
       (s) => s.nis.toUpperCase() === cleanNis || (s.qrToken && s.qrToken.includes(cleanNis))
@@ -585,13 +597,13 @@ export const ScannerView: React.FC<ScannerViewProps> = ({
               {/* Bottom Instruction Pill */}
               <div className="absolute bottom-4 z-20 flex items-center gap-2 px-4 py-1.5 rounded-full bg-inverse-surface/85 backdrop-blur-md shadow-lg border border-primary-fixed/20 text-inverse-on-surface">
                 <span className="material-symbols-outlined text-[16px] text-secondary-fixed">center_focus_strong</span>
-                <span className="text-xs">Arahkan QR Code kartu santri ke bingkai sensor</span>
+                <span className="text-xs">{scanWindowOpen ? 'Arahkan QR Code kartu santri ke bingkai sensor' : 'Scanner terkunci di luar jam kegiatan'}</span>
               </div>
 
               {/* Live Signal Indicator */}
               <div className="absolute top-4 left-4 z-20 flex items-center gap-1.5 px-2 py-0.5 rounded bg-black/60 font-mono text-[10px] text-secondary-fixed">
                 <span className="w-1.5 h-1.5 rounded-full bg-secondary-fixed animate-ping" />
-                60 FPS • SCANNER AKTIF
+                {scanWindowOpen ? '60 FPS • SCANNER AKTIF' : 'SCANNER TERKUNCI'}
               </div>
             </div>
 
@@ -647,6 +659,12 @@ export const ScannerView: React.FC<ScannerViewProps> = ({
               </button>
             </div>
           </div>
+
+          {!scanWindowOpen && activeActivity && (
+            <div className="rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+              Scanner untuk <strong>{activeActivity.title}</strong> terkunci. Jadwal: {activeActivity.time} WIB.
+            </div>
+          )}
 
           {/* Alert: QR terbaca namun tidak terdaftar */}
           {unrecognizedCode && (

@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Activity, PageView, Santri } from '../types';
+import { parseActivityTime } from '../utils/activitySchedule';
 
 interface KegiatanViewProps {
   activities: Activity[];
@@ -78,6 +79,10 @@ export const KegiatanView: React.FC<KegiatanViewProps> = ({
 
   const handleSave = () => {
     if (!form.title || !form.time || !form.location || !form.petugas) return;
+    if (!parseActivityTime(form.time)) {
+      alert('Masukkan rentang jam yang valid, misalnya 05:00 - 06:00 WIB.');
+      return;
+    }
 
     if (editingActivity) {
       onUpdateActivity({
@@ -367,15 +372,16 @@ export const KegiatanView: React.FC<KegiatanViewProps> = ({
 
               {/* Waktu */}
               <div className="flex flex-col gap-1">
-                <label className="text-xs font-semibold text-on-surface">Waktu <span className="text-error">*</span></label>
+                <label className="text-xs font-semibold text-on-surface">Jam Mulai - Selesai <span className="text-error">*</span></label>
                 <input
                   type="text"
                   required
                   value={form.time}
                   onChange={(e) => setForm({ ...form, time: e.target.value })}
-                  placeholder="Cth: 05:00 - 06:00 WIB"
+                  placeholder="05:00 - 06:00 WIB"
                   className="w-full h-11 px-4 bg-surface-container-low text-on-surface text-sm rounded-xl border border-outline-variant/30 focus:outline-none focus:ring-2 focus:ring-primary/20"
                 />
+                <span className="text-[11px] text-on-surface-variant">Scanner aktif otomatis selama rentang waktu ini.</span>
               </div>
 
               {/* Lokasi */}
@@ -404,27 +410,8 @@ export const KegiatanView: React.FC<KegiatanViewProps> = ({
                 />
               </div>
 
-              {/* Status */}
-              <div className="flex flex-col gap-1">
-                <label className="text-xs font-semibold text-on-surface">Status Kegiatan</label>
-                <div className="flex gap-2 flex-wrap">
-                  {(['Akan Datang', 'Sedang Berlangsung', 'Selesai'] as Activity['status'][]).map((s) => (
-                    <button
-                      key={s}
-                      type="button"
-                      onClick={() => setForm({ ...form, status: s })}
-                      className={`px-3 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
-                        form.status === s
-                          ? s === 'Sedang Berlangsung' ? 'bg-primary text-on-primary' :
-                            s === 'Selesai' ? 'bg-secondary text-on-secondary' :
-                            'bg-surface-container-highest text-on-surface'
-                          : 'bg-surface-container-low text-on-surface-variant border border-outline-variant/30 hover:bg-surface-container'
-                      }`}
-                    >
-                      {s}
-                    </button>
-                  ))}
-                </div>
+              <div className="rounded-xl bg-primary-fixed/30 px-3 py-2 text-xs text-on-surface-variant">
+                Status kegiatan berubah otomatis mengikuti jam mulai dan selesai.
               </div>
 
               {/* Icon */}
@@ -471,9 +458,9 @@ export const KegiatanView: React.FC<KegiatanViewProps> = ({
               <button
                 type="button"
                 onClick={handleSave}
-                disabled={!form.title || !form.time || !form.location || !form.petugas}
+                disabled={!form.title || !parseActivityTime(form.time) || !form.location || !form.petugas}
                 className={`flex-1 py-2.5 rounded-xl font-bold text-sm flex items-center justify-center gap-2 transition-all ${
-                  form.title && form.time && form.location && form.petugas
+                  form.title && parseActivityTime(form.time) && form.location && form.petugas
                     ? 'bg-primary text-on-primary hover:bg-primary-container cursor-pointer shadow-md'
                     : 'bg-surface-container text-outline cursor-not-allowed'
                 }`}
