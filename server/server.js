@@ -53,6 +53,28 @@ app.post('/api/piket-amalsholih', async (req, res) => {
   }
 });
 
+app.put('/api/piket-amalsholih/:id', async (req, res) => {
+  const { beforeImage, afterImage, description } = req.body;
+  if (!String(beforeImage || '').startsWith('data:image/') || !String(afterImage || '').startsWith('data:image/') || !String(description || '').trim()) {
+    return res.status(400).json({ error: 'Foto before, foto after, dan deskripsi wajib diisi.' });
+  }
+  try {
+    await ensurePiketTable();
+    const [result] = await pool.query('UPDATE piket_amalsholih SET before_image = ?, after_image = ?, description = ? WHERE id = ?', [beforeImage, afterImage, description.trim(), req.params.id]);
+    if (!result.affectedRows) return res.status(404).json({ error: 'Dokumentasi tidak ditemukan.' });
+    res.json({ success: true });
+  } catch (error) { console.error('Error update Piket Amalsholih:', error); res.status(500).json({ error: error.message }); }
+});
+
+app.delete('/api/piket-amalsholih/:id', async (req, res) => {
+  try {
+    await ensurePiketTable();
+    const [result] = await pool.query('DELETE FROM piket_amalsholih WHERE id = ?', [req.params.id]);
+    if (!result.affectedRows) return res.status(404).json({ error: 'Dokumentasi tidak ditemukan.' });
+    res.json({ success: true });
+  } catch (error) { console.error('Error delete Piket Amalsholih:', error); res.status(500).json({ error: error.message }); }
+});
+
 const ensureMateriTable = () => pool.query(`CREATE TABLE IF NOT EXISTS ketercapaian_materi (
   santri_id VARCHAR(50) PRIMARY KEY,
   al_quran TINYINT UNSIGNED NOT NULL DEFAULT 0,
@@ -111,6 +133,9 @@ app.post('/api/auth/login', async (req, res) => {
   const { username, password, role } = req.body;
 
   try {
+    // Migrasikan akun bawaan yang sudah ada agar kredensial lama tidak tetap berlaku.
+    await pool.query("UPDATE users SET username = 'prasaringanadmin', password = 'psrppmak354' WHERE username = 'admin' AND role = 'admin'");
+    await pool.query("UPDATE users SET username = 'prasaringan26', password = 'prasaringan354ak' WHERE username = 'mahasantri' AND role = 'santri'");
     const [rows] = await pool.query(
       'SELECT id, username, role, nama FROM users WHERE username = ? AND password = ?',
       [username, password]
@@ -125,17 +150,17 @@ app.post('/api/auth/login', async (req, res) => {
     }
 
     // Fallback bawaan jika database belum diisi
-    if (username === 'admin' && password === 'admin123') {
+    if (username === 'prasaringanadmin' && password === 'psrppmak354') {
       return res.json({
         success: true,
-        user: { id: 1, username: 'admin', role: 'admin', nama: 'Administrator Pesantren' }
+        user: { id: 1, username: 'prasaringanadmin', role: 'admin', nama: 'Administrator Pesantren' }
       });
     }
 
-    if (username === 'mahasantri' && password === 'mahasantri123') {
+    if (username === 'prasaringan26' && password === 'prasaringan354ak') {
       return res.json({
         success: true,
-        user: { id: 2, username: 'mahasantri', role: 'santri', nama: 'Portal Umum Santri' }
+        user: { id: 2, username: 'prasaringan26', role: 'santri', nama: 'Portal Umum Santri' }
       });
     }
 
@@ -143,16 +168,16 @@ app.post('/api/auth/login', async (req, res) => {
   } catch (error) {
     console.error('Login error:', error);
     // Fallback jika DB error
-    if (username === 'admin' && password === 'admin123') {
+    if (username === 'prasaringanadmin' && password === 'psrppmak354') {
       return res.json({
         success: true,
-        user: { id: 1, username: 'admin', role: 'admin', nama: 'Administrator' }
+        user: { id: 1, username: 'prasaringanadmin', role: 'admin', nama: 'Administrator' }
       });
     }
-    if (username === 'mahasantri' && password === 'mahasantri123') {
+    if (username === 'prasaringan26' && password === 'prasaringan354ak') {
       return res.json({
         success: true,
-        user: { id: 2, username: 'mahasantri', role: 'santri', nama: 'Portal Santri' }
+        user: { id: 2, username: 'prasaringan26', role: 'santri', nama: 'Portal Santri' }
       });
     }
     res.status(500).json({ success: false, message: 'Terjadi kesalahan server database' });

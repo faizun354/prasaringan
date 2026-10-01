@@ -27,11 +27,11 @@ CREATE TABLE users (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Akun Default Siap Pakai:
--- Admin:  admin / admin123
--- Santri: mahasantri / mahasantri123
+-- Admin:  prasaringanadmin / psrppmak354
+-- Santri: prasaringan26 / prasaringan354ak
 INSERT INTO users (username, password, role, nama) VALUES
-('admin', 'admin123', 'admin', 'Administrator Pesantren'),
-('mahasantri', 'mahasantri123', 'santri', 'Portal Umum Santri');
+('prasaringanadmin', 'psrppmak354', 'admin', 'Administrator Pesantren'),
+('prasaringan26', 'prasaringan354ak', 'santri', 'Portal Umum Santri');
 
 -- ------------------------------------------------------------------------
 -- 3. TABEL: santri (Master Data Santri)

@@ -312,6 +312,16 @@ export default function App() {
     setPiketEntries((prev) => [entry, ...prev]);
   };
 
+  const handleUpdatePiketEntry = async (entry: PiketEntry) => {
+    await apiFetch(`/piket-amalsholih/${encodeURIComponent(entry.id)}`, { method: 'PUT', body: JSON.stringify(entry) });
+    setPiketEntries((prev) => prev.map((item) => item.id === entry.id ? entry : item));
+  };
+
+  const handleDeletePiketEntry = async (id: string) => {
+    await apiFetch(`/piket-amalsholih/${encodeURIComponent(id)}`, { method: 'DELETE' });
+    setPiketEntries((prev) => prev.filter((item) => item.id !== id));
+  };
+
   const handleSaveMateriProgress = async (data: MateriProgress) => {
     await apiFetch('/ketercapaian-materi', { method: 'PUT', body: JSON.stringify(data) });
     setMateriProgress((previous) => [...previous.filter((row) => row.santriId !== data.santriId), data]);
@@ -430,7 +440,7 @@ export default function App() {
           )}
 
           {currentPage === 'piket-amalsholih' && (
-            <PiketAmalsholihView entries={piketEntries} canUpload={role === 'admin'} onAdd={handleAddPiketEntry} />
+            <PiketAmalsholihView entries={piketEntries} canUpload={role === 'admin'} onAdd={handleAddPiketEntry} onUpdate={handleUpdatePiketEntry} onDelete={handleDeletePiketEntry} />
           )}
 
           {currentPage === 'ketercapaian-materi' && (
