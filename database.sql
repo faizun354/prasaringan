@@ -127,6 +127,19 @@ CREATE TABLE IF NOT EXISTS piket_amalsholih (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+-- ------------------------------------------------------------------------
+-- 7. TABEL: ketercapaian_materi (Capaian Al Quran/Al Hadist per santri)
+-- ------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS ketercapaian_materi (
+    santri_id VARCHAR(50) PRIMARY KEY,
+    al_quran TINYINT UNSIGNED NOT NULL DEFAULT 0,
+    al_hadist TINYINT UNSIGNED NOT NULL DEFAULT 0,
+    spreadsheet_url TEXT NOT NULL,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    CONSTRAINT fk_materi_santri FOREIGN KEY (santri_id) REFERENCES santri(id)
+        ON DELETE CASCADE ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 -- ========================================================================
 -- SELESAI. Script ini siap di-Run (Ctrl + Shift + Enter) di MySQL Workbench!
 -- ========================================================================

@@ -53,6 +53,48 @@ app.post('/api/piket-amalsholih', async (req, res) => {
   }
 });
 
+const ensureMateriTable = () => pool.query(`CREATE TABLE IF NOT EXISTS ketercapaian_materi (
+  santri_id VARCHAR(50) PRIMARY KEY,
+  al_quran TINYINT UNSIGNED NOT NULL DEFAULT 0,
+  al_hadist TINYINT UNSIGNED NOT NULL DEFAULT 0,
+  spreadsheet_url TEXT NOT NULL,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  CONSTRAINT fk_materi_santri FOREIGN KEY (santri_id) REFERENCES santri(id) ON DELETE CASCADE ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`);
+
+app.get('/api/ketercapaian-materi', async (_req, res) => {
+  try {
+    await ensureMateriTable();
+    const [rows] = await pool.query('SELECT santri_id, al_quran, al_hadist, spreadsheet_url FROM ketercapaian_materi');
+    res.json(rows.map((row) => ({ santriId: row.santri_id, alQuran: row.al_quran, alHadist: row.al_hadist, spreadsheetUrl: row.spreadsheet_url })));
+  } catch (error) {
+    console.error('Error fetch ketercapaian materi:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.put('/api/ketercapaian-materi', async (req, res) => {
+  const { santriId, alQuran, alHadist, spreadsheetUrl = '' } = req.body;
+  if (!santriId || !Number.isInteger(alQuran) || alQuran < 0 || alQuran > 100 || !Number.isInteger(alHadist) || alHadist < 0 || alHadist > 100) {
+    return res.status(400).json({ error: 'Capaian materi harus berupa angka bulat 0 sampai 100.' });
+  }
+  if (spreadsheetUrl && !/^https?:\/\//i.test(spreadsheetUrl)) {
+    return res.status(400).json({ error: 'Link spreadsheet harus menggunakan http atau https.' });
+  }
+  try {
+    await ensureMateriTable();
+    await pool.query(
+      `INSERT INTO ketercapaian_materi (santri_id, al_quran, al_hadist, spreadsheet_url)
+       VALUES (?, ?, ?, ?) ON DUPLICATE KEY UPDATE al_quran = VALUES(al_quran), al_hadist = VALUES(al_hadist), spreadsheet_url = VALUES(spreadsheet_url)`,
+      [santriId, alQuran, alHadist, spreadsheetUrl]
+    );
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Error save ketercapaian materi:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // ─── 1. Health & Connection Check ──────────────────────────────────────
 app.get('/api/health', async (req, res) => {
   const isConnected = await testConnection();

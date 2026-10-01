@@ -18,6 +18,7 @@ import { KegiatanView } from './components/KegiatanView';
 import { PetugasView } from './components/PetugasView';
 import { PengaturanView } from './components/PengaturanView';
 import { PiketAmalsholihView, PiketEntry } from './components/PiketAmalsholihView';
+import { KetercapaianMateriView, MateriProgress } from './components/KetercapaianMateriView';
 import { getActivityStatus } from './utils/activitySchedule';
 
 // ─── Base URL API (auto-detect: proxy saat dev, sama-origin saat production) ─
@@ -30,6 +31,7 @@ const ADMIN_PAGES: PageView[] = [
   'kegiatan',
   'laporan',
   'piket-amalsholih',
+  'ketercapaian-materi',
   'petugas',
   'pengaturan',
   'registrasi-santri',
@@ -43,8 +45,9 @@ const SANTRI_PAGES: PageView[] = [
   'dashboard',
   'kegiatan',
   'data-santri',
-  'laporan'
-  , 'piket-amalsholih'
+  'laporan',
+  'piket-amalsholih',
+  'ketercapaian-materi'
 ];
 
 export default function App() {
@@ -62,6 +65,7 @@ export default function App() {
   const [activities, setActivities] = useState<Activity[]>([]);
   const [attendanceLogs, setAttendanceLogs] = useState<AttendanceRecord[]>([]);
   const [piketEntries, setPiketEntries] = useState<PiketEntry[]>([]);
+  const [materiProgress, setMateriProgress] = useState<MateriProgress[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [dbConnected, setDbConnected] = useState(false);
   const [scheduleClock, setScheduleClock] = useState(() => Date.now());
@@ -109,16 +113,18 @@ export default function App() {
   const loadAllData = useCallback(async () => {
     setIsLoading(true);
     try {
-      const [santriData, activitiesData, attendanceData, piketData] = await Promise.all([
+      const [santriData, activitiesData, attendanceData, piketData, materiData] = await Promise.all([
         apiFetch('/santri'),
         apiFetch('/activities'),
         apiFetch('/attendance'),
         apiFetch('/piket-amalsholih'),
+        apiFetch('/ketercapaian-materi'),
       ]);
       setSantriList(santriData);
       setActivities(activitiesData);
       setAttendanceLogs(attendanceData);
       setPiketEntries(piketData);
+      setMateriProgress(materiData);
       setDbConnected(true);
     } catch (err) {
       console.error('Gagal load data dari MySQL:', err);
@@ -306,6 +312,11 @@ export default function App() {
     setPiketEntries((prev) => [entry, ...prev]);
   };
 
+  const handleSaveMateriProgress = async (data: MateriProgress) => {
+    await apiFetch('/ketercapaian-materi', { method: 'PUT', body: JSON.stringify(data) });
+    setMateriProgress((previous) => [...previous.filter((row) => row.santriId !== data.santriId), data]);
+  };
+
 
   // ─── Guard: belum login ────────────────────────────────────────────────
   if (!isAuthenticated) {
@@ -420,6 +431,10 @@ export default function App() {
 
           {currentPage === 'piket-amalsholih' && (
             <PiketAmalsholihView entries={piketEntries} canUpload={role === 'admin'} onAdd={handleAddPiketEntry} />
+          )}
+
+          {currentPage === 'ketercapaian-materi' && (
+            <KetercapaianMateriView santriList={santriList} progress={materiProgress} onSave={handleSaveMateriProgress} />
           )}
 
           {role === 'admin' && currentPage === 'registrasi-santri' && (
