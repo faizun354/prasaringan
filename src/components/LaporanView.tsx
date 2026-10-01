@@ -9,6 +9,8 @@ interface LaporanViewProps {
   filterNis?: string;
   readOnly?: boolean;
   onAddAttendance?: (record: AttendanceRecord) => void;
+  onUpdateAttendance?: (record: AttendanceRecord) => void;
+  onDeleteAttendance?: (id: string) => void;
 }
 
 interface ActivityTableProps {
@@ -17,6 +19,8 @@ interface ActivityTableProps {
   filterNis?: string;
   readOnly?: boolean;
   onOpenManualModal?: (activityTitle: string) => void;
+  onUpdateAttendance?: (record: AttendanceRecord) => void;
+  onDeleteAttendance?: (id: string) => void;
 }
 
 // Komponen Tabel per Kegiatan
@@ -26,9 +30,11 @@ const ActivityTable: React.FC<ActivityTableProps> = ({
   filterNis = '',
   readOnly = false,
   onOpenManualModal
+  , onUpdateAttendance, onDeleteAttendance
 }) => {
   const [searchNis, setSearchNis] = useState(filterNis);
   const [filterDate, setFilterDate] = useState('');
+  const [page, setPage] = useState(1);
 
   // Helper untuk mencocokkan tanggal
   const matchesDate = (logDate: string, selectedDate: string, logId?: string) => {
@@ -86,6 +92,8 @@ const ActivityTable: React.FC<ActivityTableProps> = ({
       return true;
     });
   }, [logs, filterNis, searchNis, filterDate]);
+  const pageCount = Math.max(1, Math.ceil(filteredLogs.length / 7));
+  const pageLogs = filteredLogs.slice((page - 1) * 7, page * 7);
 
   // Ekspor Excel (.xlsx) khusus kegiatan ini
   const handleExportExcel = () => {
@@ -281,7 +289,7 @@ const ActivityTable: React.FC<ActivityTableProps> = ({
                 </td>
               </tr>
             ) : (
-              filteredLogs.map((log, index) => {
+              pageLogs.map((log, index) => {
                 const statusLower = log.status?.toLowerCase();
                 const isHadir = statusLower === 'hadir';
                 const isIzin = statusLower === 'izin';
@@ -291,7 +299,7 @@ const ActivityTable: React.FC<ActivityTableProps> = ({
                 return (
                   <tr key={log.id} className="hover:bg-surface-container-low/70 transition-colors">
                     {/* 1. No */}
-                    <td className="py-3 px-4 text-center text-outline font-medium">{index + 1}</td>
+                    <td className="py-3 px-4 text-center text-outline font-medium">{(page - 1) * 7 + index + 1}</td>
 
                     {/* 2. Waktu Scan */}
                     <td className="py-3 px-4">
@@ -357,6 +365,17 @@ const ActivityTable: React.FC<ActivityTableProps> = ({
                         />
                         <span>{log.status}</span>
                       </span>
+                      {!readOnly && <div className="flex justify-center gap-1 mt-2">
+                        <button type="button" title="Edit presensi" className="text-primary hover:text-primary-container" onClick={() => {
+                          const nextStatus = window.prompt('Status (Hadir, Izin, Sakit, Alfa):', log.status);
+                          if (!nextStatus || !['Hadir', 'Izin', 'Sakit', 'Alfa'].includes(nextStatus)) return;
+                          const keterangan = window.prompt('Keterangan:', log.keterangan || '') ?? log.keterangan;
+                          onUpdateAttendance?.({ ...log, status: nextStatus as AttendanceRecord['status'], keterangan });
+                        }}><span className="material-symbols-outlined text-[17px]">edit</span></button>
+                        <button type="button" title="Hapus presensi" className="text-error hover:opacity-70" onClick={() => {
+                          if (window.confirm(`Hapus presensi ${log.nama} tanggal ${log.date}?`)) onDeleteAttendance?.(log.id);
+                        }}><span className="material-symbols-outlined text-[17px]">delete</span></button>
+                      </div>}
                     </td>
                   </tr>
                 );
@@ -365,6 +384,14 @@ const ActivityTable: React.FC<ActivityTableProps> = ({
           </tbody>
         </table>
       </div>
+      {filteredLogs.length > 7 && <div className="flex items-center justify-between text-xs text-on-surface-variant">
+        <span>Menampilkan {(page - 1) * 7 + 1}–{Math.min(page * 7, filteredLogs.length)} dari {filteredLogs.length} data</span>
+        <div className="flex items-center gap-2">
+          <button type="button" disabled={page === 1} onClick={() => setPage(page - 1)} className="px-3 py-1.5 rounded-lg border border-outline-variant disabled:opacity-40">Sebelumnya</button>
+          <span>Halaman {page} / {pageCount}</span>
+          <button type="button" disabled={page === pageCount} onClick={() => setPage(page + 1)} className="px-3 py-1.5 rounded-lg border border-outline-variant disabled:opacity-40">Berikutnya</button>
+        </div>
+      </div>}
     </div>
   );
 };
@@ -376,6 +403,7 @@ export const LaporanView: React.FC<LaporanViewProps> = ({
   filterNis,
   readOnly = false,
   onAddAttendance
+  , onUpdateAttendance, onDeleteAttendance
 }) => {
   // Modal State untuk Catat Izin / Alpha Manual oleh Admin
   const [showManualModal, setShowManualModal] = useState(false);
@@ -656,6 +684,8 @@ export const LaporanView: React.FC<LaporanViewProps> = ({
                 filterNis={filterNis}
                 readOnly={readOnly}
                 onOpenManualModal={onAddAttendance ? handleOpenManualModal : undefined}
+                onUpdateAttendance={onUpdateAttendance}
+                onDeleteAttendance={onDeleteAttendance}
               />
             );
           })}

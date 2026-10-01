@@ -339,6 +339,37 @@ app.post('/api/attendance', async (req, res) => {
   }
 });
 
+// PUT Perbarui status/keterangan presensi dari laporan admin
+app.put('/api/attendance/:id', async (req, res) => {
+  const { status, keterangan } = req.body;
+  if (!['Hadir', 'Izin', 'Sakit', 'Alfa'].includes(status)) {
+    return res.status(400).json({ error: 'Status presensi tidak valid' });
+  }
+  try {
+    const [result] = await pool.query(
+      'UPDATE attendance_records SET status = ?, keterangan = ? WHERE id = ?',
+      [status, keterangan || null, req.params.id]
+    );
+    if (!result.affectedRows) return res.status(404).json({ error: 'Data presensi tidak ditemukan' });
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Error update attendance:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// DELETE Hapus presensi dari laporan admin
+app.delete('/api/attendance/:id', async (req, res) => {
+  try {
+    const [result] = await pool.query('DELETE FROM attendance_records WHERE id = ?', [req.params.id]);
+    if (!result.affectedRows) return res.status(404).json({ error: 'Data presensi tidak ditemukan' });
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Error delete attendance:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // ─── 6. Production Static Files (VPS Deployment) ───────────────────────
 const distPath = path.join(__dirname, '../dist');
 app.use(express.static(distPath));

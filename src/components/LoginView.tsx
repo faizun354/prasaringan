@@ -13,13 +13,11 @@ const SANTRI_PASSWORD = 'mahasantri123';
 
 interface LoginViewProps {
   onLoginSuccess: (role: Role, nis?: string) => void;
-  onOpenDirectScanner: () => void;
   santriList: Santri[];
 }
 
 export const LoginView: React.FC<LoginViewProps> = ({
   onLoginSuccess,
-  onOpenDirectScanner,
   santriList
 }) => {
   const [role, setRole] = useState<Role>('admin');
@@ -299,22 +297,6 @@ export const LoginView: React.FC<LoginViewProps> = ({
                 </button>
               </form>
 
-              {/* Quick Scanner */}
-              <div className="mt-5 pt-3 flex items-center justify-center">
-                <button
-                  type="button"
-                  onClick={onOpenDirectScanner}
-                  className="group inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-surface-container hover:bg-surface-container-high transition-colors cursor-pointer"
-                >
-                  <span className="material-symbols-outlined text-secondary text-[20px] group-hover:scale-110 transition-transform">
-                    qr_code_2
-                  </span>
-                  <span className="text-[13px] text-on-surface font-medium">Buka Scanner Mandiri (tanpa login)</span>
-                  <span className="material-symbols-outlined text-outline text-[16px] group-hover:translate-x-0.5 transition-transform">
-                    arrow_forward
-                  </span>
-                </button>
-              </div>
             </div>
 
             {/* Footer */}

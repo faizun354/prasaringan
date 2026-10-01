@@ -99,14 +99,13 @@ export const Sidebar: React.FC<SidebarProps> = ({
               </nav>
             </div>
           ) : (
-            /* Menu Khusus Santri — 5 halaman */
+            /* Menu Khusus Santri */
             <div className="px-space-md">
               <div className="px-space-sm pb-space-xs font-label-sm text-[11px] text-outline uppercase tracking-wider font-semibold">
                 Menu Santri
               </div>
               <nav className="flex flex-col gap-1">
                 {navItem('dashboard', 'Dashboard', 'dashboard')}
-                {navItem('presensi-scanner', 'Presensi (QR Scanner)', 'qr_code_scanner')}
                 {navItem('kegiatan', 'Kegiatan', 'event_available')}
                 {navItem('data-santri', 'Data Santri', 'school')}
                 {navItem('laporan', 'Laporan Presensi', 'bar_chart')}

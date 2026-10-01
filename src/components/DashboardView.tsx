@@ -7,6 +7,7 @@ interface DashboardViewProps {
   attendanceLogs?: AttendanceRecord[];
   onNavigate: (page: PageView) => void;
   onOpenScannerForActivity?: (activityCode: string) => void;
+  showScannerAccess?: boolean;
 }
 
 export const DashboardView: React.FC<DashboardViewProps> = ({
@@ -14,7 +15,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   activities,
   attendanceLogs = [],
   onNavigate,
-  onOpenScannerForActivity
+  onOpenScannerForActivity,
+  showScannerAccess = true
 }) => {
   // ─── Stats dihitung dari data nyata ───────────────────────────────────
   const totalSantri = santriList.length;
@@ -59,14 +61,14 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         </div>
 
         <div className="flex items-center gap-space-sm z-10 flex-wrap">
-          <button
+          {showScannerAccess && <button
             type="button"
             onClick={() => onNavigate('presensi-scanner')}
             className="flex items-center gap-2 px-space-md py-2.5 rounded-xl bg-primary text-on-primary hover:bg-primary-container transition-all duration-200 font-semibold text-sm cursor-pointer shadow-md hover:shadow-lg"
           >
             <span className="material-symbols-outlined text-[18px]">qr_code_scanner</span>
             <span>Mulai Scanner QR</span>
-          </button>
+          </button>}
         </div>
       </div>
 
@@ -247,7 +249,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                       </div>
 
                       {/* Action for Ongoing */}
-                      {isOngoing && (
+                      {isOngoing && showScannerAccess && (
                         <div className="pt-1 flex justify-end">
                           <button
                             type="button"

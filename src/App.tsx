@@ -39,7 +39,6 @@ const ADMIN_PAGES: PageView[] = [
 // Satu akun bersama untuk semua santri (mahasantri / mahasantri123)
 const SANTRI_PAGES: PageView[] = [
   'dashboard',
-  'presensi-scanner',
   'kegiatan',
   'data-santri',
   'laporan'
@@ -170,14 +169,6 @@ export default function App() {
     setCurrentPage('dashboard');
   };
 
-  const handleOpenDirectScanner = () => {
-    setRole('santri');
-    setIsAuthenticated(true);
-    sessionStorage.setItem('pondok_session', JSON.stringify({ role: 'santri', nis: '', page: 'presensi-scanner' }));
-    history.pushState({ page: 'presensi-scanner' }, '', location.pathname + location.search);
-    setCurrentPage('presensi-scanner');
-  };
-
   const handleLogout = () => {
     sessionStorage.removeItem('pondok_session');
     setIsAuthenticated(false);
@@ -292,13 +283,24 @@ export default function App() {
     }
   };
 
+  const handleUpdateAttendance = async (record: AttendanceRecord) => {
+    setAttendanceLogs((prev) => prev.map((log) => log.id === record.id ? record : log));
+    try { await apiFetch(`/attendance/${encodeURIComponent(record.id)}`, { method: 'PUT', body: JSON.stringify(record) }); }
+    catch (err) { console.error('Gagal memperbarui presensi:', err); }
+  };
+
+  const handleDeleteAttendance = async (id: string) => {
+    setAttendanceLogs((prev) => prev.filter((log) => log.id !== id));
+    try { await apiFetch(`/attendance/${encodeURIComponent(id)}`, { method: 'DELETE' }); }
+    catch (err) { console.error('Gagal menghapus presensi:', err); }
+  };
+
 
   // ─── Guard: belum login ────────────────────────────────────────────────
   if (!isAuthenticated) {
     return (
       <LoginView
         onLoginSuccess={handleLoginSuccess}
-        onOpenDirectScanner={handleOpenDirectScanner}
         santriList={santriList}
       />
     );
@@ -400,6 +402,8 @@ export default function App() {
               activities={scheduledActivities}
               attendanceLogs={attendanceLogs}
               onAddAttendance={handleAddAttendance}
+              onUpdateAttendance={handleUpdateAttendance}
+              onDeleteAttendance={handleDeleteAttendance}
             />
           )}
 
@@ -456,6 +460,7 @@ export default function App() {
               activities={scheduledActivities}
               attendanceLogs={attendanceLogs}
               onNavigate={handleNavigate}
+              showScannerAccess={false}
               onOpenScannerForActivity={(code) => {
                 setActiveActivityCode(code);
                 handleNavigate('presensi-scanner');
@@ -498,7 +503,7 @@ export default function App() {
           )}
 
           {/* ─── SHARED: Scanner (Admin & Santri) ─────────────── */}
-          {currentPage === 'presensi-scanner' && (
+          {role === 'admin' && currentPage === 'presensi-scanner' && (
             <ScannerView
               santriList={santriList}
               activities={scheduledActivities}
