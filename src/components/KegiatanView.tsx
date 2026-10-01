@@ -211,7 +211,6 @@ export const KegiatanView: React.FC<KegiatanViewProps> = ({
       {filtered.length > 0 && (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-space-md">
           {filtered.map((act) => {
-            const percentage = act.totalSantri > 0 ? Math.round((act.hadirCount / act.totalSantri) * 100) : 0;
             const isOngoing = act.status === 'Sedang Berlangsung';
 
             return (
@@ -285,22 +284,15 @@ export const KegiatanView: React.FC<KegiatanViewProps> = ({
                   </div>
                 </div>
 
-                {/* Progress & Petugas */}
+                {/* Petugas & jumlah kehadiran */}
                 <div className="pt-2 border-t border-surface-container/60 flex flex-col gap-2">
                   <div className="flex items-center justify-between text-xs">
                     <span className="text-on-surface-variant">
                       Petugas: <strong className="text-on-surface">{act.petugas}</strong>
                     </span>
                     <span className="font-bold text-on-surface">
-                      {act.hadirCount} / {act.totalSantri} ({percentage}%)
+                      {act.hadirCount} / {act.totalSantri}
                     </span>
-                  </div>
-
-                  <div className="w-full bg-surface-container-highest rounded-full h-2 overflow-hidden">
-                    <div
-                      className={`h-full rounded-full transition-all duration-500 ${isOngoing ? 'bg-primary' : 'bg-secondary'}`}
-                      style={{ width: `${percentage}%` }}
-                    />
                   </div>
 
                   <div className="flex items-center justify-end gap-2 pt-1">

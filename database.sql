@@ -116,6 +116,17 @@ CREATE TABLE attendance_records (
 -- Aktifkan kembali pengecekan foreign key
 SET FOREIGN_KEY_CHECKS = 1;
 
+-- ------------------------------------------------------------------------
+-- 6. TABEL: piket_amalsholih (Dokumentasi foto before & after)
+-- ------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS piket_amalsholih (
+    id VARCHAR(60) PRIMARY KEY,
+    before_image LONGTEXT NOT NULL,
+    after_image LONGTEXT NOT NULL,
+    description TEXT NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 -- ========================================================================
 -- SELESAI. Script ini siap di-Run (Ctrl + Shift + Enter) di MySQL Workbench!
 -- ========================================================================

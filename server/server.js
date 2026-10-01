@@ -18,6 +18,41 @@ app.use(cors({ origin: '*' }));
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
+// Dokumentasi foto Piket Amalsholih
+const ensurePiketTable = () => pool.query(`CREATE TABLE IF NOT EXISTS piket_amalsholih (
+  id VARCHAR(60) PRIMARY KEY,
+  before_image LONGTEXT NOT NULL,
+  after_image LONGTEXT NOT NULL,
+  description TEXT NOT NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`);
+
+app.get('/api/piket-amalsholih', async (_req, res) => {
+  try {
+    await ensurePiketTable();
+    const [rows] = await pool.query('SELECT id, before_image, after_image, description, created_at FROM piket_amalsholih ORDER BY created_at DESC');
+    res.json(rows.map((row) => ({ id: row.id, beforeImage: row.before_image, afterImage: row.after_image, description: row.description, createdAt: row.created_at })));
+  } catch (error) {
+    console.error('Error fetch Piket Amalsholih:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.post('/api/piket-amalsholih', async (req, res) => {
+  const { id, beforeImage, afterImage, description } = req.body;
+  if (!id || !String(beforeImage || '').startsWith('data:image/') || !String(afterImage || '').startsWith('data:image/') || !String(description || '').trim()) {
+    return res.status(400).json({ error: 'Foto before, foto after, dan deskripsi wajib diisi.' });
+  }
+  try {
+    await ensurePiketTable();
+    await pool.query('INSERT INTO piket_amalsholih (id, before_image, after_image, description) VALUES (?, ?, ?, ?)', [id, beforeImage, afterImage, description.trim()]);
+    res.status(201).json({ success: true });
+  } catch (error) {
+    console.error('Error save Piket Amalsholih:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // ─── 1. Health & Connection Check ──────────────────────────────────────
 app.get('/api/health', async (req, res) => {
   const isConnected = await testConnection();

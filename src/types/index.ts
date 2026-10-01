@@ -7,6 +7,7 @@ export type PageView =
   | 'kegiatan'
   | 'presensi-scanner'
   | 'laporan'
+  | 'piket-amalsholih'
   | 'petugas'
   | 'pengaturan'
   | 'registrasi-santri'

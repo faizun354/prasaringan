@@ -17,6 +17,7 @@ import { KartuSantriView } from './components/KartuSantriView';
 import { KegiatanView } from './components/KegiatanView';
 import { PetugasView } from './components/PetugasView';
 import { PengaturanView } from './components/PengaturanView';
+import { PiketAmalsholihView, PiketEntry } from './components/PiketAmalsholihView';
 import { getActivityStatus } from './utils/activitySchedule';
 
 // ─── Base URL API (auto-detect: proxy saat dev, sama-origin saat production) ─
@@ -28,6 +29,7 @@ const ADMIN_PAGES: PageView[] = [
   'data-santri',
   'kegiatan',
   'laporan',
+  'piket-amalsholih',
   'petugas',
   'pengaturan',
   'registrasi-santri',
@@ -42,6 +44,7 @@ const SANTRI_PAGES: PageView[] = [
   'kegiatan',
   'data-santri',
   'laporan'
+  , 'piket-amalsholih'
 ];
 
 export default function App() {
@@ -58,6 +61,7 @@ export default function App() {
   const [santriList, setSantriList] = useState<Santri[]>([]);
   const [activities, setActivities] = useState<Activity[]>([]);
   const [attendanceLogs, setAttendanceLogs] = useState<AttendanceRecord[]>([]);
+  const [piketEntries, setPiketEntries] = useState<PiketEntry[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [dbConnected, setDbConnected] = useState(false);
   const [scheduleClock, setScheduleClock] = useState(() => Date.now());
@@ -105,14 +109,16 @@ export default function App() {
   const loadAllData = useCallback(async () => {
     setIsLoading(true);
     try {
-      const [santriData, activitiesData, attendanceData] = await Promise.all([
+      const [santriData, activitiesData, attendanceData, piketData] = await Promise.all([
         apiFetch('/santri'),
         apiFetch('/activities'),
         apiFetch('/attendance'),
+        apiFetch('/piket-amalsholih'),
       ]);
       setSantriList(santriData);
       setActivities(activitiesData);
       setAttendanceLogs(attendanceData);
+      setPiketEntries(piketData);
       setDbConnected(true);
     } catch (err) {
       console.error('Gagal load data dari MySQL:', err);
@@ -295,6 +301,11 @@ export default function App() {
     catch (err) { console.error('Gagal menghapus presensi:', err); }
   };
 
+  const handleAddPiketEntry = async (entry: PiketEntry) => {
+    await apiFetch('/piket-amalsholih', { method: 'POST', body: JSON.stringify(entry) });
+    setPiketEntries((prev) => [entry, ...prev]);
+  };
+
 
   // ─── Guard: belum login ────────────────────────────────────────────────
   if (!isAuthenticated) {
@@ -405,6 +416,10 @@ export default function App() {
               onUpdateAttendance={handleUpdateAttendance}
               onDeleteAttendance={handleDeleteAttendance}
             />
+          )}
+
+          {currentPage === 'piket-amalsholih' && (
+            <PiketAmalsholihView entries={piketEntries} canUpload={role === 'admin'} onAdd={handleAddPiketEntry} />
           )}
 
           {role === 'admin' && currentPage === 'registrasi-santri' && (

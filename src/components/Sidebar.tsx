@@ -96,6 +96,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 {navItem('kegiatan', 'Kegiatan', 'event_available')}
                 {navItem('presensi-scanner', 'Presensi (QR Scanner)', 'qr_code_scanner')}
                 {navItem('laporan', 'Laporan Presensi', 'bar_chart')}
+                {navItem('piket-amalsholih', 'Piket Amalsholih', 'photo_library')}
               </nav>
             </div>
           ) : (
@@ -109,6 +110,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 {navItem('kegiatan', 'Kegiatan', 'event_available')}
                 {navItem('data-santri', 'Data Santri', 'school')}
                 {navItem('laporan', 'Laporan Presensi', 'bar_chart')}
+                {navItem('piket-amalsholih', 'Piket Amalsholih', 'photo_library')}
               </nav>
             </div>
           )}
