@@ -46,10 +46,13 @@ const SANTRI_PAGES: PageView[] = [
 ];
 
 export default function App() {
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [role, setRole] = useState<Role>('admin');
-  const [loggedInNis, setLoggedInNis] = useState<string>(''); // untuk santri: filter laporan
-  const [currentPage, setCurrentPage] = useState<PageView>('login');
+  const [savedSession] = useState(() => {
+    try { return JSON.parse(sessionStorage.getItem('pondok_session') || 'null'); } catch { return null; }
+  });
+  const [isAuthenticated, setIsAuthenticated] = useState(Boolean(savedSession));
+  const [role, setRole] = useState<Role>(savedSession?.role === 'santri' ? 'santri' : 'admin');
+  const [loggedInNis, setLoggedInNis] = useState<string>(savedSession?.nis || ''); // untuk santri: filter laporan
+  const [currentPage, setCurrentPage] = useState<PageView>(savedSession?.page || 'dashboard');
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
 
   // ─── Core state dari MySQL via API ──────────────────────────────────────
@@ -59,6 +62,30 @@ export default function App() {
   const [isLoading, setIsLoading] = useState(false);
   const [dbConnected, setDbConnected] = useState(false);
   const [scheduleClock, setScheduleClock] = useState(() => Date.now());
+
+  // Simpan halaman dalam riwayat browser agar tombol Back menavigasi aplikasi.
+  useEffect(() => {
+    const initialPage = isAuthenticated ? currentPage : 'login';
+    history.replaceState({ page: initialPage }, '', location.pathname + location.search);
+    if (!isAuthenticated) history.pushState({ page: 'login' }, '', location.pathname + location.search);
+    const onPopState = (event: PopStateEvent) => {
+      if (!isAuthenticated) {
+        history.pushState({ page: 'login' }, '', location.pathname + location.search);
+        setCurrentPage('login');
+        return;
+      }
+      const page = event.state?.page as PageView | undefined;
+      setCurrentPage(page && page !== 'login' ? page : 'dashboard');
+    };
+    window.addEventListener('popstate', onPopState);
+    return () => window.removeEventListener('popstate', onPopState);
+  }, [isAuthenticated]);
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      sessionStorage.setItem('pondok_session', JSON.stringify({ role, nis: loggedInNis, page: currentPage }));
+    }
+  }, [isAuthenticated, role, loggedInNis, currentPage]);
 
   useEffect(() => {
     const timer = window.setInterval(() => setScheduleClock(Date.now()), 15_000);
@@ -120,10 +147,12 @@ export default function App() {
   // ─── Navigasi dengan role guard ────────────────────────────────────────
   const handleNavigate = (page: PageView) => {
     if (role === 'admin' && ADMIN_PAGES.includes(page)) {
+      if (page !== currentPage) history.pushState({ page }, '', location.pathname + location.search);
       setCurrentPage(page);
       return;
     }
     if (role === 'santri' && SANTRI_PAGES.includes(page)) {
+      if (page !== currentPage) history.pushState({ page }, '', location.pathname + location.search);
       setCurrentPage(page);
       return;
     }
@@ -136,19 +165,25 @@ export default function App() {
     setRole(selectedRole);
     setIsAuthenticated(true);
     if (nis) setLoggedInNis(nis);
+    sessionStorage.setItem('pondok_session', JSON.stringify({ role: selectedRole, nis: nis || '', page: 'dashboard' }));
+    history.pushState({ page: 'dashboard' }, '', location.pathname + location.search);
     setCurrentPage('dashboard');
   };
 
   const handleOpenDirectScanner = () => {
     setRole('santri');
     setIsAuthenticated(true);
+    sessionStorage.setItem('pondok_session', JSON.stringify({ role: 'santri', nis: '', page: 'presensi-scanner' }));
+    history.pushState({ page: 'presensi-scanner' }, '', location.pathname + location.search);
     setCurrentPage('presensi-scanner');
   };
 
   const handleLogout = () => {
+    sessionStorage.removeItem('pondok_session');
     setIsAuthenticated(false);
     setRole('admin');
     setLoggedInNis('');
+    history.pushState({ page: 'login' }, '', location.pathname + location.search);
     setCurrentPage('login');
   };
 
