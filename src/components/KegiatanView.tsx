@@ -290,9 +290,6 @@ export const KegiatanView: React.FC<KegiatanViewProps> = ({
                     <span className="text-on-surface-variant">
                       Petugas: <strong className="text-on-surface">{act.petugas}</strong>
                     </span>
-                    <span className="font-bold text-on-surface">
-                      {act.hadirCount} / {act.totalSantri}
-                    </span>
                   </div>
 
                   <div className="flex items-center justify-end gap-2 pt-1">
