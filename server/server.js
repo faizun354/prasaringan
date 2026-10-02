@@ -134,8 +134,8 @@ app.post('/api/auth/login', async (req, res) => {
 
   try {
     // Migrasikan akun bawaan yang sudah ada agar kredensial lama tidak tetap berlaku.
-    await pool.query("UPDATE users SET username = 'prasaringanadmin', password = 'psrppmak354' WHERE username = 'admin' AND role = 'admin'");
-    await pool.query("UPDATE users SET username = 'prasaringan26', password = 'prasaringan354ak' WHERE username = 'mahasantri' AND role = 'santri'");
+    await pool.query("UPDATE users SET username = 'admin', password = 'psr354admin' WHERE username = 'admin' AND role = 'admin'");
+    await pool.query("UPDATE users SET username = 'mahasantri', password = 'psr354santri' WHERE username = 'mahasantri' AND role = 'santri'");
     const [rows] = await pool.query(
       'SELECT id, username, role, nama FROM users WHERE username = ? AND password = ?',
       [username, password]
@@ -150,17 +150,17 @@ app.post('/api/auth/login', async (req, res) => {
     }
 
     // Fallback bawaan jika database belum diisi
-    if (username === 'prasaringanadmin' && password === 'psrppmak354') {
+    if (username === 'admin' && password === 'psr354admin') {
       return res.json({
         success: true,
-        user: { id: 1, username: 'prasaringanadmin', role: 'admin', nama: 'Administrator Pesantren' }
+        user: { id: 1, username: 'admin', role: 'admin', nama: 'Administrator Pesantren' }
       });
     }
 
-    if (username === 'prasaringan26' && password === 'prasaringan354ak') {
+    if (username === 'mahasantri' && password === 'psr354santri') {
       return res.json({
         success: true,
-        user: { id: 2, username: 'prasaringan26', role: 'santri', nama: 'Portal Umum Santri' }
+        user: { id: 2, username: 'mahasantri', role: 'santri', nama: 'Portal Umum Santri' }
       });
     }
 
@@ -168,16 +168,16 @@ app.post('/api/auth/login', async (req, res) => {
   } catch (error) {
     console.error('Login error:', error);
     // Fallback jika DB error
-    if (username === 'prasaringanadmin' && password === 'psrppmak354') {
+    if (username === 'admin' && password === 'psr354admin') {
       return res.json({
         success: true,
-        user: { id: 1, username: 'prasaringanadmin', role: 'admin', nama: 'Administrator' }
+        user: { id: 1, username: 'admin', role: 'admin', nama: 'Administrator' }
       });
     }
-    if (username === 'prasaringan26' && password === 'prasaringan354ak') {
+    if (username === 'mahasantri' && password === 'psr354santri') {
       return res.json({
         success: true,
-        user: { id: 2, username: 'prasaringan26', role: 'santri', nama: 'Portal Santri' }
+        user: { id: 2, username: 'mahasantri', role: 'santri', nama: 'Portal Santri' }
       });
     }
     res.status(500).json({ success: false, message: 'Terjadi kesalahan server database' });
