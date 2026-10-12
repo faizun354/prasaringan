@@ -24,6 +24,19 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   const izinPulang = santriList.filter((s) => s.status === 'Izin Pulang').length;
   const nonAktif = santriList.filter((s) => s.status === 'Non-Aktif').length;
 
+  const attendanceSummary = santriList.map((santri) => {
+    const records = attendanceLogs.filter((log) =>
+      log.santriId === santri.id || log.nis.toUpperCase() === santri.nis.toUpperCase()
+    );
+    return {
+      santri,
+      hadir: records.filter((log) => log.status === 'Hadir').length,
+      izin: records.filter((log) => log.status === 'Izin').length,
+      sakit: records.filter((log) => log.status === 'Sakit').length,
+      alfa: records.filter((log) => log.status === 'Alfa').length,
+    };
+  });
+
   const totalKegiatan = activities.length;
   const kegiatanBerlangsung = activities.filter((a) => a.status === 'Sedang Berlangsung').length;
   const today = new Date().toLocaleDateString('id-ID', {
@@ -155,8 +168,57 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             </div>
           </div>
 
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-space-lg items-start">
+          {/* Rekap Kehadiran Santri */}
+          <section className="bg-surface-container-lowest rounded-2xl p-space-lg shadow-sm flex flex-col gap-space-md border border-outline-variant/30 min-w-0">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary shrink-0">
+                <span className="material-symbols-outlined text-[22px]">fact_check</span>
+              </div>
+              <div>
+                <h2 className="text-lg text-on-surface font-bold">Rekap Kehadiran Santri</h2>
+                <span className="text-xs text-on-surface-variant">Total presensi seluruh kegiatan</span>
+              </div>
+            </div>
+
+            {attendanceSummary.length === 0 ? (
+              <div className="flex flex-col items-center py-10 gap-2 text-on-surface-variant">
+                <span className="material-symbols-outlined text-[40px] text-outline/50">groups</span>
+                <p className="text-sm text-center">Belum ada data santri.</p>
+              </div>
+            ) : (
+              <div className="overflow-x-auto rounded-xl border border-outline-variant/30">
+                <table className="w-full min-w-[560px] text-sm text-left">
+                  <thead className="bg-surface-container-low text-xs uppercase tracking-wide text-on-surface-variant">
+                    <tr>
+                      <th scope="col" className="px-3 py-3 font-semibold">Santri</th>
+                      <th scope="col" className="px-3 py-3 text-center font-semibold">Hadir</th>
+                      <th scope="col" className="px-3 py-3 text-center font-semibold">Izin</th>
+                      <th scope="col" className="px-3 py-3 text-center font-semibold">Sakit</th>
+                      <th scope="col" className="px-3 py-3 text-center font-semibold">Alpha</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-outline-variant/20">
+                    {attendanceSummary.map(({ santri, hadir, izin, sakit, alfa }) => (
+                      <tr key={santri.id} className="hover:bg-surface-container-low/60">
+                        <td className="px-3 py-3">
+                          <div className="font-semibold text-on-surface">{santri.nama}</div>
+                          <div className="text-xs text-on-surface-variant">{santri.nis}</div>
+                        </td>
+                        <td className="px-3 py-3 text-center font-semibold text-emerald-700">{hadir}</td>
+                        <td className="px-3 py-3 text-center font-semibold text-amber-700">{izin}</td>
+                        <td className="px-3 py-3 text-center font-semibold text-sky-700">{sakit}</td>
+                        <td className="px-3 py-3 text-center font-semibold text-rose-700">{alfa}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </section>
+
           {/* Box Kegiatan Presensi */}
-          <div className="bg-surface-container-lowest rounded-2xl p-space-lg shadow-sm flex flex-col gap-space-md border border-outline-variant/30">
+          <div className="bg-surface-container-lowest rounded-2xl p-space-lg shadow-sm flex flex-col gap-space-md border border-outline-variant/30 min-w-0">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <div className="w-10 h-10 rounded-xl bg-secondary/15 flex items-center justify-center text-secondary">
@@ -269,6 +331,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 })}
               </div>
             )}
+          </div>
           </div>
         </div>
       )}
