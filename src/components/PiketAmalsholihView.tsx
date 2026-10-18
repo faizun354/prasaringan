@@ -23,14 +23,26 @@ const compressImage = (file: File): Promise<string> => new Promise((resolve, rej
     const image = new Image();
     image.onerror = () => reject(new Error('File yang dipilih bukan gambar yang valid.'));
     image.onload = () => {
-      const scale = Math.min(1, 1400 / Math.max(image.width, image.height));
       const canvas = document.createElement('canvas');
-      canvas.width = Math.round(image.width * scale);
-      canvas.height = Math.round(image.height * scale);
+      let scale = Math.min(1, 1200 / Math.max(image.width, image.height));
+      canvas.width = Math.max(1, Math.round(image.width * scale));
+      canvas.height = Math.max(1, Math.round(image.height * scale));
       const context = canvas.getContext('2d');
       if (!context) return reject(new Error('Gagal memproses foto.'));
-      context.drawImage(image, 0, 0, canvas.width, canvas.height);
-      resolve(canvas.toDataURL('image/jpeg', 0.78));
+      // Jaga tiap file sekitar 350 KB agar dua foto tetap muat pada proxy
+      // dengan batas request umum sekitar 1 MB (termasuk overhead multipart).
+      for (let attempt = 0; attempt < 12; attempt += 1) {
+        context.clearRect(0, 0, canvas.width, canvas.height);
+        context.drawImage(image, 0, 0, canvas.width, canvas.height);
+        const quality = attempt < 3 ? [0.72, 0.62, 0.52][attempt] : 0.48;
+        const dataUrl = canvas.toDataURL('image/jpeg', quality);
+        const estimatedBytes = Math.ceil((dataUrl.length - dataUrl.indexOf(',') - 1) * 0.75);
+        if (estimatedBytes <= 350 * 1024) return resolve(dataUrl);
+        scale *= 0.82;
+        canvas.width = Math.max(1, Math.round(image.width * scale));
+        canvas.height = Math.max(1, Math.round(image.height * scale));
+      }
+      reject(new Error('Foto terlalu besar untuk diproses. Pilih foto lain dengan resolusi lebih rendah.'));
     };
     image.src = String(reader.result);
   };
