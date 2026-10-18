@@ -109,6 +109,25 @@ export default function App() {
     return res.json();
   };
 
+  const piketImageBlob = async (image: string) => {
+    const response = await fetch(image);
+    return response.blob();
+  };
+  const savePiketRequest = async (path: string, method: 'POST' | 'PUT', entry: PiketEntry) => {
+    const form = new FormData();
+    form.append('description', entry.description);
+    if (method === 'POST') form.append('id', entry.id);
+    if (entry.beforeImage.startsWith('data:image/')) form.append('beforeImage', await piketImageBlob(entry.beforeImage), 'before.jpg');
+    if (entry.afterImage.startsWith('data:image/')) form.append('afterImage', await piketImageBlob(entry.afterImage), 'after.jpg');
+    const response = await fetch(`${API_BASE}${path}`, { method, body: form });
+    if (!response.ok) {
+      let message = `API error: ${response.status}`;
+      try { message = (await response.json()).error || message; } catch { /* gunakan status HTTP */ }
+      throw new Error(message);
+    }
+    return response.json();
+  };
+
   // ─── Load semua data dari MySQL saat login berhasil ──────────────────
   const loadAllData = useCallback(async () => {
     setIsLoading(true);
@@ -308,13 +327,13 @@ export default function App() {
   };
 
   const handleAddPiketEntry = async (entry: PiketEntry) => {
-    await apiFetch('/piket-amalsholih', { method: 'POST', body: JSON.stringify(entry) });
-    setPiketEntries((prev) => [entry, ...prev]);
+    const saved = await savePiketRequest('/piket-amalsholih', 'POST', entry);
+    setPiketEntries((prev) => [{ ...entry, beforeImage: saved.beforeImage, afterImage: saved.afterImage }, ...prev]);
   };
 
   const handleUpdatePiketEntry = async (entry: PiketEntry) => {
-    await apiFetch(`/piket-amalsholih/${encodeURIComponent(entry.id)}`, { method: 'PUT', body: JSON.stringify(entry) });
-    setPiketEntries((prev) => prev.map((item) => item.id === entry.id ? entry : item));
+    const saved = await savePiketRequest(`/piket-amalsholih/${encodeURIComponent(entry.id)}`, 'PUT', entry);
+    setPiketEntries((prev) => prev.map((item) => item.id === entry.id ? { ...entry, beforeImage: saved.beforeImage, afterImage: saved.afterImage } : item));
   };
 
   const handleDeletePiketEntry = async (id: string) => {

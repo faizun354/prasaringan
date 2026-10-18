@@ -2,6 +2,8 @@ import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import path from 'path';
+import fs from 'fs/promises';
+import multer from 'multer';
 import { fileURLToPath } from 'url';
 import pool, { testConnection } from './db.js';
 
@@ -18,6 +20,53 @@ app.use(cors({ origin: '*' }));
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
+const piketUploadDir = path.join(__dirname, 'uploads', 'piket');
+const piketStorage = multer.diskStorage({
+  destination: async (_req, _file, callback) => {
+    try { await fs.mkdir(piketUploadDir, { recursive: true }); callback(null, piketUploadDir); }
+    catch (error) { callback(error, piketUploadDir); }
+  },
+  filename: (_req, file, callback) => callback(null, `${Date.now()}-${Math.random().toString(36).slice(2)}${path.extname(file.originalname).toLowerCase()}`)
+});
+const uploadPiketImages = multer({
+  storage: piketStorage,
+  limits: { fileSize: 8 * 1024 * 1024, files: 2 },
+  fileFilter: (_req, file, callback) => callback(null, ['image/jpeg', 'image/png', 'image/webp'].includes(file.mimetype))
+}).fields([{ name: 'beforeImage', maxCount: 1 }, { name: 'afterImage', maxCount: 1 }]);
+const parsePiketUpload = (req, res, next) => uploadPiketImages(req, res, (error) => {
+  if (!error) return next();
+  const status = error instanceof multer.MulterError && error.code === 'LIMIT_FILE_SIZE' ? 413 : 400;
+  res.status(status).json({ error: status === 413 ? 'Ukuran tiap foto maksimal 8 MB.' : 'Format unggahan foto tidak valid.' });
+});
+const piketImageUrl = (file) => `/uploads/piket/${file.filename}`;
+const deletePiketFile = async (url) => {
+  if (!url?.startsWith('/uploads/piket/')) return;
+  const filename = path.basename(url);
+  await fs.unlink(path.join(piketUploadDir, filename)).catch(() => {});
+};
+const migrateLegacyPiketImages = async () => {
+  const [rows] = await pool.query('SELECT id, before_image, after_image FROM piket_amalsholih');
+  for (const row of rows) {
+    const replacements = {};
+    for (const column of ['before_image', 'after_image']) {
+      const match = /^data:image\/(jpeg|png|webp);base64,([\s\S]+)$/i.exec(row[column] || '');
+      if (!match) continue;
+      const filename = `${Date.now()}-${Math.random().toString(36).slice(2)}.${match[1].toLowerCase() === 'jpeg' ? 'jpg' : match[1].toLowerCase()}`;
+      const fullPath = path.join(piketUploadDir, filename);
+      await fs.writeFile(fullPath, Buffer.from(match[2], 'base64'));
+      replacements[column] = piketImageUrl({ filename });
+    }
+    if (replacements.before_image || replacements.after_image) {
+      try {
+        await pool.query('UPDATE piket_amalsholih SET before_image = ?, after_image = ? WHERE id = ?', [replacements.before_image || row.before_image, replacements.after_image || row.after_image, row.id]);
+      } catch (error) {
+        await Promise.all(Object.values(replacements).map(deletePiketFile));
+        throw error;
+      }
+    }
+  }
+};
+
 // Dokumentasi foto Piket Amalsholih
 const ensurePiketTable = () => pool.query(`CREATE TABLE IF NOT EXISTS piket_amalsholih (
   id VARCHAR(60) PRIMARY KEY,
@@ -30,6 +79,8 @@ const ensurePiketTable = () => pool.query(`CREATE TABLE IF NOT EXISTS piket_amal
 app.get('/api/piket-amalsholih', async (_req, res) => {
   try {
     await ensurePiketTable();
+    await fs.mkdir(piketUploadDir, { recursive: true });
+    await migrateLegacyPiketImages();
     const [rows] = await pool.query('SELECT id, before_image, after_image, description, created_at FROM piket_amalsholih ORDER BY created_at DESC');
     res.json(rows.map((row) => ({ id: row.id, beforeImage: row.before_image, afterImage: row.after_image, description: row.description, createdAt: row.created_at })));
   } catch (error) {
@@ -38,39 +89,62 @@ app.get('/api/piket-amalsholih', async (_req, res) => {
   }
 });
 
-app.post('/api/piket-amalsholih', async (req, res) => {
-  const { id, beforeImage, afterImage, description } = req.body;
-  if (!id || !String(beforeImage || '').startsWith('data:image/') || !String(afterImage || '').startsWith('data:image/') || !String(description || '').trim()) {
+app.post('/api/piket-amalsholih', parsePiketUpload, async (req, res) => {
+  const { id, description } = req.body;
+  const beforeFile = req.files?.beforeImage?.[0];
+  const afterFile = req.files?.afterImage?.[0];
+  if (!id || !beforeFile || !afterFile || !String(description || '').trim()) {
+    await Promise.all([beforeFile, afterFile].filter(Boolean).map((file) => fs.unlink(file.path).catch(() => {})));
     return res.status(400).json({ error: 'Foto before, foto after, dan deskripsi wajib diisi.' });
   }
+  const beforeImage = piketImageUrl(beforeFile);
+  const afterImage = piketImageUrl(afterFile);
   try {
     await ensurePiketTable();
     await pool.query('INSERT INTO piket_amalsholih (id, before_image, after_image, description) VALUES (?, ?, ?, ?)', [id, beforeImage, afterImage, description.trim()]);
-    res.status(201).json({ success: true });
+    res.status(201).json({ success: true, beforeImage, afterImage });
   } catch (error) {
+    await Promise.all([beforeFile, afterFile].map((file) => fs.unlink(file.path).catch(() => {})));
     console.error('Error save Piket Amalsholih:', error);
     res.status(500).json({ error: error.message });
   }
 });
 
-app.put('/api/piket-amalsholih/:id', async (req, res) => {
-  const { beforeImage, afterImage, description } = req.body;
-  if (!String(beforeImage || '').startsWith('data:image/') || !String(afterImage || '').startsWith('data:image/') || !String(description || '').trim()) {
-    return res.status(400).json({ error: 'Foto before, foto after, dan deskripsi wajib diisi.' });
+app.put('/api/piket-amalsholih/:id', parsePiketUpload, async (req, res) => {
+  const { description } = req.body;
+  const beforeFile = req.files?.beforeImage?.[0];
+  const afterFile = req.files?.afterImage?.[0];
+  if (!String(description || '').trim()) {
+    await Promise.all([beforeFile, afterFile].filter(Boolean).map((file) => fs.unlink(file.path).catch(() => {})));
+    return res.status(400).json({ error: 'Deskripsi wajib diisi.' });
   }
   try {
     await ensurePiketTable();
-    const [result] = await pool.query('UPDATE piket_amalsholih SET before_image = ?, after_image = ?, description = ? WHERE id = ?', [beforeImage, afterImage, description.trim(), req.params.id]);
-    if (!result.affectedRows) return res.status(404).json({ error: 'Dokumentasi tidak ditemukan.' });
-    res.json({ success: true });
-  } catch (error) { console.error('Error update Piket Amalsholih:', error); res.status(500).json({ error: error.message }); }
+    const [rows] = await pool.query('SELECT before_image, after_image FROM piket_amalsholih WHERE id = ?', [req.params.id]);
+    if (!rows.length) {
+      await Promise.all([beforeFile, afterFile].filter(Boolean).map((file) => fs.unlink(file.path).catch(() => {})));
+      return res.status(404).json({ error: 'Dokumentasi tidak ditemukan.' });
+    }
+    const old = rows[0];
+    const beforeImage = beforeFile ? piketImageUrl(beforeFile) : old.before_image;
+    const afterImage = afterFile ? piketImageUrl(afterFile) : old.after_image;
+    await pool.query('UPDATE piket_amalsholih SET before_image = ?, after_image = ?, description = ? WHERE id = ?', [beforeImage, afterImage, description.trim(), req.params.id]);
+    if (beforeFile) await deletePiketFile(old.before_image);
+    if (afterFile) await deletePiketFile(old.after_image);
+    res.json({ success: true, beforeImage, afterImage });
+  } catch (error) {
+    await Promise.all([beforeFile, afterFile].filter(Boolean).map((file) => fs.unlink(file.path).catch(() => {})));
+    console.error('Error update Piket Amalsholih:', error); res.status(500).json({ error: error.message });
+  }
 });
 
 app.delete('/api/piket-amalsholih/:id', async (req, res) => {
   try {
     await ensurePiketTable();
+    const [rows] = await pool.query('SELECT before_image, after_image FROM piket_amalsholih WHERE id = ?', [req.params.id]);
     const [result] = await pool.query('DELETE FROM piket_amalsholih WHERE id = ?', [req.params.id]);
     if (!result.affectedRows) return res.status(404).json({ error: 'Dokumentasi tidak ditemukan.' });
+    if (rows.length) await Promise.all([deletePiketFile(rows[0].before_image), deletePiketFile(rows[0].after_image)]);
     res.json({ success: true });
   } catch (error) { console.error('Error delete Piket Amalsholih:', error); res.status(500).json({ error: error.message }); }
 });
@@ -474,6 +548,7 @@ app.delete('/api/attendance/:id', async (req, res) => {
 
 // ─── 6. Production Static Files (VPS Deployment) ───────────────────────
 const distPath = path.join(__dirname, '../dist');
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 app.use(express.static(distPath));
 
 app.get('*', (req, res) => {
